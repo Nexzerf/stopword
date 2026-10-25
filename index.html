@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>คลังคำ STOP! Word Duel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Mitr:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: game-show board. Big letter tiles on top, category tabs, then word chips grouped by category. */
+:root {
+  --bg: #eef3fb;
+  --surface: #ffffff;
+  --ink: #16233f;
+  --muted: #5a6784;
+  --line: #c9d4e8;
+  --stop: #d7262e;
+  --stop-ink: #ffffff;
+  --sel: #1d4fd8;
+  --animal: #2f8f3a;
+  --food: #c76a00;
+  --color: #9b2fc2;
+  --object: #1f6fb8;
+  --place: #c4245a;
+  --font-display: "Bungee", "Mitr", system-ui, sans-serif;
+  --font-head: "Mitr", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Thai", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1424; --surface: #18213a; --ink: #e8eefc; --muted: #9eabc9; --line: #2c3a5e;
+    --stop: #ef4249; --sel: #6d95ff;
+    --animal: #5cc46a; --food: #f0a03a; --color: #c27ae6; --object: #5ea9f0; --place: #f06a95;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1424; --surface: #18213a; --ink: #e8eefc; --muted: #9eabc9; --line: #2c3a5e;
+  --stop: #ef4249; --sel: #6d95ff;
+  --animal: #5cc46a; --food: #f0a03a; --color: #c27ae6; --object: #5ea9f0; --place: #f06a95;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; }
+.sign {
+  width: 64px; height: 64px; flex: none; background: var(--stop); color: var(--stop-ink);
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  display: grid; place-items: center; font-family: var(--font-display); font-size: 15px; letter-spacing: .02em;
+}
+.titles { min-width: 0; flex: 1 1 260px; }
+h1 { font-family: var(--font-head); font-weight: 600; font-size: clamp(22px, 4vw, 30px); line-height: 1.2; margin: 0; text-wrap: balance; }
+h1 span { font-family: var(--font-display); font-weight: 400; color: var(--stop); }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.search { flex: 1 1 240px; position: relative; }
+.search input {
+  width: 100%; font: inherit; font-size: 16px; padding: 12px 14px; border-radius: 12px;
+  border: 2px solid var(--line); border-bottom-width: 4px; background: var(--surface); color: var(--ink);
+}
+.search input:focus-visible { outline: none; border-color: var(--sel); }
+
+.letters { display: grid; grid-template-columns: repeat(13, 1fr); gap: 6px; }
+@media (max-width: 640px) { .letters { grid-template-columns: repeat(7, 1fr); } }
+.letter {
+  font-family: var(--font-display); font-size: 20px; padding: 8px 0; min-height: 46px;
+  background: var(--surface); color: var(--ink); border: 2px solid var(--line); border-bottom-width: 4px;
+  border-radius: 10px; cursor: pointer; transition: transform .08s;
+}
+.letter:active { transform: translateY(2px); border-bottom-width: 2px; }
+.letter[aria-pressed="true"] { background: var(--stop); color: var(--stop-ink); border-color: var(--stop); filter: saturate(1.1); }
+.letter:focus-visible, .tab:focus-visible, .tool:focus-visible, .word:focus-visible { outline: 3px solid var(--sel); outline-offset: 2px; }
+
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab, .tool {
+  font: inherit; font-weight: 500; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--surface); color: var(--ink); min-height: 40px;
+}
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tab .n { font-variant-numeric: tabular-nums; opacity: .7; margin-left: 4px; font-size: 13px; }
+.tools { display: flex; gap: 6px; }
+
+.board { display: grid; gap: 14px; }
+.big { display: flex; align-items: baseline; gap: 12px; }
+.big b { font-family: var(--font-display); font-weight: 400; font-size: 56px; line-height: 1; color: var(--stop); }
+.big p { margin: 0; color: var(--muted); }
+.cat { background: var(--surface); border: 2px solid var(--line); border-bottom-width: 4px; border-radius: 14px; padding: 14px 16px; }
+.cat h2 { margin: 0 0 10px; font-family: var(--font-head); font-weight: 500; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.cat h2::before { content: ""; width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
+.cat h2 small { font-family: var(--font-body); color: var(--muted); font-weight: 400; font-size: 13px; }
+.words { display: flex; flex-wrap: wrap; gap: 6px; }
+.word {
+  font: inherit; font-weight: 500; padding: 5px 11px; border-radius: 8px; cursor: pointer; min-height: 36px;
+  background: transparent; color: var(--ink); border: 2px solid color-mix(in srgb, var(--c) 45%, transparent);
+}
+.word:hover { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.word .len { font-size: 11px; color: var(--muted); margin-left: 5px; font-variant-numeric: tabular-nums; }
+.word.copied { background: var(--c); color: #fff; border-color: var(--c); }
+.word.copied .len { color: #fff; }
+.none { color: var(--muted); margin: 0; }
+.hit { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; max-width: 70ch; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-weight: 500;
+}
+@media (prefers-reduced-motion: reduce) { .letter { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="sign" aria-hidden="true">STOP</div>
+    <div class="titles">
+      <h1>คลังคำ <span>STOP!</span> Word Duel</h1>
+      <p class="sub">เลือกตัวอักษรที่สุ่มได้ แล้วหยิบคำไปพิมพ์ให้ทัน แตะคำเพื่อคัดลอก</p>
+    </div>
+    <label class="search" for="q">
+      <input id="q" type="search" placeholder="ค้นหาคำ เช่น tiger" autocomplete="off" aria-label="ค้นหาคำ">
+    </label>
+  </header>
+
+  <nav class="letters" id="letters" aria-label="ตัวอักษรขึ้นต้น"></nav>
+
+  <div class="bar">
+    <div class="tabs" id="tabs" role="tablist" aria-label="หมวด"></div>
+    <div class="tools">
+      <button class="tool" id="sort" type="button" aria-label="สลับการเรียง">สั้นก่อน</button>
+      <button class="tool" id="rand" type="button">สุ่มตัวอักษร</button>
+    </div>
+  </div>
+
+  <section class="board" id="board" aria-live="polite"></section>
+
+  <footer>เคล็ดลับ: กดปุ่มตัวอักษรบนคีย์บอร์ดเพื่อกระโดดไปตัวนั้นได้เลย คำสั้นพิมพ์เร็วกว่า จึงเรียงสั้นก่อนเป็นค่าเริ่มต้น รายการคำที่เกมยอมรับอาจต่างกันไปบ้าง โดยเฉพาะหมวด Color และตัวอักษรยากอย่าง Q, U, X, Z</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const CATS = [
+  { key: "animal", label: "Animal", th: "สัตว์" },
+  { key: "food",   label: "Food",   th: "อาหาร" },
+  { key: "color",  label: "Color",  th: "สี" },
+  { key: "object", label: "Objects", th: "สิ่งของ" },
+  { key: "place",  label: "City/Country", th: "เมือง/ประเทศ" },
+];
+
+// Words per letter: [animal, food, color, object, place], comma-separated.
+const RAW = {
+  A: ["Ant, Ape, Alligator, Antelope, Armadillo, Albatross, Alpaca, Anteater, Anaconda, Axolotl, Aardvark, Anchovy",
+      "Apple, Apricot, Avocado, Almond, Asparagus, Artichoke, Anchovy, Arugula, Applesauce",
+      "Aqua, Ash, Amber, Azure, Auburn, Apricot, Amethyst, Aquamarine",
+      "Axe, Arrow, Anchor, Alarm, Apron, Album, Atlas, Award, Antenna, Armchair",
+      "America, Argentina, Australia, Austria, Afghanistan, Algeria, Angola, Armenia, Albania, Athens, Amsterdam, Ankara, Austin, Atlanta, Auckland, Abu Dhabi, Adelaide, Alexandria"],
+  B: ["Bat, Bee, Bear, Bird, Bull, Boar, Bison, Bunny, Beaver, Badger, Beetle, Baboon, Buffalo, Butterfly, Barracuda",
+      "Bean, Beef, Beet, Bread, Bacon, Bagel, Butter, Burger, Banana, Biscuit, Brownie, Burrito, Broccoli, Baguette, Blueberry",
+      "Blue, Black, Brown, Beige, Brick, Blush, Bronze, Burgundy, Baby Blue",
+      "Bag, Bed, Box, Ball, Book, Bell, Bowl, Brush, Broom, Bench, Bottle, Bucket, Button, Basket, Blanket, Bicycle",
+      "Bali, Bern, Busan, Brazil, Bhutan, Berlin, Boston, Bolivia, Belgium, Bahrain, Bangkok, Beijing, Bulgaria, Brussels, Budapest, Barcelona, Bangladesh, Buenos Aires"],
+  C: ["Cat, Cow, Crab, Crow, Clam, Camel, Cobra, Cougar, Coyote, Cheetah, Chicken, Cricket, Crocodile, Chameleon, Chimpanzee, Caterpillar",
+      "Cake, Corn, Candy, Chips, Curry, Cheese, Cookie, Carrot, Cherry, Cereal, Coconut, Cabbage, Cupcake, Cucumber, Croissant, Chocolate",
+      "Cyan, Coral, Cream, Cobalt, Copper, Cherry, Crimson, Charcoal, Cerulean, Champagne, Chocolate, Chartreuse",
+      "Cup, Car, Cap, Card, Coin, Comb, Chair, Clock, Cable, Candle, Camera, Crayon, Cushion, Computer, Calculator",
+      "Cuba, Chile, China, Cairo, Canada, Cyprus, Croatia, Chicago, Calgary, Colombia, Cambodia, Cape Town, Chiang Mai, Costa Rica, Casablanca, Copenhagen"],
+  D: ["Dog, Doe, Duck, Deer, Dove, Dodo, Dingo, Donkey, Dugong, Dolphin, Dinosaur, Dragonfly, Dalmatian",
+      "Dip, Date, Dill, Dough, Donut, Danish, Durian, Dessert, Dumpling, Doughnut, Dragon Fruit",
+      "Denim, Dark Red, Dark Blue, Dark Green, Dandelion",
+      "Dart, Desk, Door, Doll, Drum, Dice, Dish, Drill, Diary, Dress, Diamond, Dustpan",
+      "Doha, Delhi, Dhaka, Dubai, Dakar, Dublin, Dallas, Denver, Da Nang, Detroit, Denmark, Dresden, Dominica, Djibouti"],
+  E: ["Eel, Emu, Elk, Eagle, Egret, Ermine, Echidna, Elephant, Earthworm",
+      "Egg, Eclair, Endive, Edamame, Espresso, Eggplant, Empanada, Enchilada, Elderberry",
+      "Ecru, Ebony, Emerald, Eggshell, Eggplant, Electric Blue",
+      "Easel, Engine, Eraser, Earring, Envelope, Earphones",
+      "Egypt, England, Ecuador, Estonia, Eritrea, Ethiopia, Edmonton, Edinburgh, El Salvador"],
+  F: ["Fox, Fly, Fish, Frog, Flea, Fawn, Falcon, Ferret, Firefly, Flamingo",
+      "Fig, Fish, Flan, Feta, Fries, Fudge, Fajita, Fondue, Falafel, French Toast",
+      "Fern, Fuchsia, Firebrick, Forest Green",
+      "Fan, Fork, Flag, Flute, Frame, Fridge, Funnel, Folder, Feather, Flashlight",
+      "Fiji, France, Finland, Florence, Fukuoka, Frankfurt"],
+  G: ["Gnu, Gull, Goat, Goose, Gecko, Gopher, Gazelle, Giraffe, Gorilla, Goldfish, Grasshopper",
+      "Gum, Grape, Gravy, Gumbo, Guava, Garlic, Ginger, Gnocchi, Granola, Goulash, Grapefruit",
+      "Gray, Grey, Gold, Green, Garnet, Ginger",
+      "Gift, Gate, Glue, Gong, Glass, Glove, Globe, Grill, Guitar, Glasses",
+      "Ghana, Greece, Guyana, Geneva, Georgia, Germany, Glasgow, Guatemala, Guangzhou, Gothenburg"],
+  H: ["Hen, Hog, Hare, Hawk, Horse, Hyena, Heron, Hippo, Hornet, Hamster, Hedgehog, Hummingbird",
+      "Ham, Honey, Hummus, Hot Dog, Herring, Hazelnut, Honeydew, Hamburger, Hash Brown",
+      "Hazel, Honey, Heather, Hot Pink",
+      "Hat, Hook, Hose, Harp, Hammer, Hanger, Helmet, Handbag, Hairbrush, Headphones",
+      "Haiti, Hanoi, Havana, Hat Yai, Houston, Hungary, Hamburg, Helsinki, Honduras, Hong Kong, Hiroshima, Ho Chi Minh City"],
+  I: ["Ibis, Ibex, Impala, Iguana, Inchworm",
+      "Icing, Ice Cream, Iced Tea",
+      "Iris, Ivory, Indigo",
+      "Ink, Iron, Inkwell, Incense, Ice Pick",
+      "Iran, Iraq, India, Italy, Israel, Ireland, Iceland, Incheon, Istanbul, Indonesia, Islamabad"],
+  J: ["Jay, Jackal, Jaguar, Jellyfish, Jackrabbit",
+      "Jam, Jelly, Juice, Jerky, Jalapeno, Jackfruit",
+      "Jade, Jasmine, Jet Black",
+      "Jar, Jug, Jeans, Jewel, Jacket, Jigsaw, Joystick",
+      "Japan, Jordan, Jaipur, Jakarta, Jamaica, Jeddah, Jeju, Jerusalem, Johannesburg"],
+  K: ["Kiwi, Kudu, Koala, Kitten, Kangaroo, Kingfisher, Komodo Dragon",
+      "Kale, Kiwi, Kebab, Kimchi, Ketchup, Kidney Bean",
+      "Khaki, Kelly Green",
+      "Key, Kite, Knife, Kettle, Keyboard",
+      "Kyiv, Kenya, Korea, Kabul, Kyoto, Krabi, Kuwait, Kolkata, Khon Kaen, Kathmandu, Kazakhstan, Kuala Lumpur"],
+  L: ["Lamb, Lion, Lynx, Llama, Lemur, Lizard, Leopard, Lobster, Ladybug",
+      "Lime, Lemon, Lentil, Lychee, Longan, Lettuce, Lobster, Lasagna, Lollipop",
+      "Lime, Lilac, Lemon, Lavender, Light Blue",
+      "Lamp, Lock, Ladder, Laptop, Letter, Lantern, Lunchbox",
+      "Laos, Lima, Lyon, Libya, Latvia, London, Lisbon, Lebanon, Lithuania, Las Vegas, Luxembourg, Los Angeles"],
+  M: ["Mole, Mule, Moth, Moose, Mouse, Macaw, Monkey, Meerkat, Manatee, Mosquito",
+      "Milk, Meat, Melon, Mango, Muffin, Mustard, Mushroom, Macaroni, Mayonnaise, Marshmallow",
+      "Mint, Mauve, Maroon, Magenta, Mustard, Mahogany",
+      "Map, Mug, Mop, Mask, Magnet, Marker, Mirror, Mattress, Microphone",
+      "Milan, Miami, Mumbai, Madrid, Manila, Mexico, Moscow, Morocco, Myanmar, Malaysia, Mongolia, Melbourne"],
+  N: ["Newt, Numbat, Narwhal, Nightingale",
+      "Nut, Nacho, Noodle, Nougat, Nutmeg, Nectarine",
+      "Navy, Navy Blue, Neon Green",
+      "Net, Nail, Needle, Napkin, Necklace, Notebook",
+      "Nice, Nepal, Norway, Naples, Nagoya, Nigeria, Nairobi, New York, Nonthaburi, New Zealand, Netherlands"],
+  O: ["Ox, Owl, Orca, Otter, Ocelot, Oyster, Ostrich, Octopus, Orangutan",
+      "Okra, Olive, Onion, Orange, Oyster, Oatmeal, Omelette",
+      "Onyx, Ochre, Olive, Orange, Orchid",
+      "Oar, Oven, Ottoman, Ornament",
+      "Oman, Oslo, Osaka, Oxford, Ottawa, Orlando"],
+  P: ["Pig, Puma, Panda, Puppy, Parrot, Python, Pelican, Peacock, Penguin, Porcupine",
+      "Pie, Pear, Peach, Pizza, Pasta, Papaya, Potato, Popcorn, Pudding, Pancake, Pineapple",
+      "Pink, Plum, Peach, Pearl, Purple, Periwinkle",
+      "Pen, Pot, Pan, Piano, Phone, Paper, Plate, Purse, Pencil, Pillow",
+      "Peru, Paris, Perth, Prague, Panama, Poland, Phuket, Pattaya, Pakistan, Portugal, Philippines"],
+  Q: ["Quail, Quokka, Quetzal",
+      "Quiche, Quinoa, Quesadilla",
+      "Quartz",
+      "Quill, Quilt, Quiver",
+      "Qatar, Quito, Quebec"],
+  R: ["Rat, Robin, Raven, Rhino, Rabbit, Rooster, Raccoon, Reindeer",
+      "Rice, Ramen, Radish, Raisin, Ravioli, Raspberry",
+      "Red, Rose, Ruby, Rust",
+      "Ring, Rope, Rake, Ruler, Radio, Remote",
+      "Rome, Rayong, Russia, Rwanda, Riyadh, Romania, Rio de Janeiro"],
+  S: ["Seal, Swan, Snail, Snake, Shark, Sheep, Sloth, Spider, Salmon, Squirrel",
+      "Salt, Soup, Sushi, Salad, Steak, Sugar, Sausage, Sandwich, Spaghetti, Strawberry",
+      "Sand, Sage, Sepia, Silver, Salmon, Scarlet, Sky Blue, Sapphire",
+      "Sock, Shoe, Soap, Sofa, Spoon, Stool, Sponge, Stapler, Spatula, Scissors",
+      "Spain, Seoul, Sydney, Sweden, Sapporo, Shanghai, Stockholm, Singapore, Switzerland"],
+  T: ["Tuna, Toad, Tiger, Tapir, Turtle, Turkey, Toucan, Tortoise",
+      "Tea, Taco, Tofu, Tart, Toast, Tomato, Tempura, Tangerine",
+      "Tan, Teal, Taupe, Tangerine, Turquoise",
+      "Tent, Tray, Table, Towel, Tissue, Trophy, Telescope, Toothbrush",
+      "Tokyo, Taipei, Taiwan, Tehran, Turkey, Toronto, Tunisia, Thailand"],
+  U: ["Urchin, Unicorn",
+      "Ube, Udon",
+      "Umber, Ultramarine",
+      "Umbrella, Ukulele, Uniform",
+      "Uganda, Ukraine, Uruguay, Udon Thani, Uzbekistan, United States, United Kingdom"],
+  V: ["Vole, Viper, Vulture",
+      "Veal, Vanilla, Vinegar",
+      "Violet, Vermilion",
+      "Vase, Vest, Violin, Vacuum",
+      "Venice, Vienna, Vietnam, Vanuatu, Vientiane, Vancouver, Venezuela"],
+  W: ["Wolf, Wasp, Worm, Whale, Walrus, Weasel, Wombat, Woodpecker",
+      "Wrap, Waffle, Walnut, Wasabi, Watermelon",
+      "Wine, White, Wheat",
+      "Watch, Wheel, Wallet, Window, Wrench, Whistle",
+      "Wales, Wuhan, Warsaw, Washington, Wellington"],
+  X: ["Xerus, X-ray Tetra",
+      "Xigua",
+      "Xanadu",
+      "Xylophone",
+      "Xi'an, Xiamen"],
+  Y: ["Yak",
+      "Yam, Yolk, Yogurt",
+      "Yellow",
+      "Yarn, Yo-yo, Yacht",
+      "Yala, Yemen, Yangon, Yokohama"],
+  Z: ["Zebu, Zebra",
+      "Ziti, Zucchini",
+      "Zaffre",
+      "Zipper",
+      "Zagreb, Zambia, Zurich, Zimbabwe"],
+};
+
+const LETTERS = Object.keys(RAW);
+const DATA = {};
+for (const L of LETTERS) {
+  DATA[L] = {};
+  CATS.forEach((c, i) => {
+    DATA[L][c.key] = [...new Set(RAW[L][i].split(",").map(w => w.trim()).filter(Boolean))];
+  });
+}
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("swd:" + k); return v == null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("swd:" + k, v); } catch {} },
+};
+const state = {
+  letter: LETTERS.includes(store.get("letter", "A")) ? store.get("letter", "A") : "A",
+  cat: store.get("cat", "all"),
+  sort: store.get("sort", "short"),
+  q: "",
+};
+if (state.cat !== "all" && !CATS.some(c => c.key === state.cat)) state.cat = "all";
+
+const $ = id => document.getElementById(id);
+const lettersEl = $("letters"), tabsEl = $("tabs"), boardEl = $("board");
+
+LETTERS.forEach(L => {
+  const b = document.createElement("button");
+  b.className = "letter"; b.type = "button"; b.textContent = L; b.dataset.l = L;
+  b.addEventListener("click", () => setLetter(L));
+  lettersEl.appendChild(b);
+});
+
+function sortWords(list) {
+  const s = [...list];
+  s.sort((a, b) => state.sort === "short" ? a.length - b.length || a.localeCompare(b) : a.localeCompare(b));
+  return s;
+}
+
+function renderTabs() {
+  tabsEl.innerHTML = "";
+  const counts = CATS.map(c => DATA[state.letter][c.key].length);
+  const items = [{ key: "all", label: "ทั้งหมด", n: counts.reduce((a, b) => a + b, 0) },
+    ...CATS.map((c, i) => ({ key: c.key, label: c.label, n: counts[i] }))];
+  for (const it of items) {
+    const b = document.createElement("button");
+    b.className = "tab"; b.type = "button"; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(state.cat === it.key));
+    b.innerHTML = `${it.label}<span class="n">${state.q ? "" : it.n}</span>`;
+    b.addEventListener("click", () => { state.cat = it.key; store.set("cat", it.key); render(); });
+    tabsEl.appendChild(b);
+  }
+}
+
+function chip(word, cat) {
+  const b = document.createElement("button");
+  b.className = "word"; b.type = "button";
+  b.style.setProperty("--c", `var(--${cat})`);
+  b.innerHTML = `<span class="selectable"></span><span class="len">${word.replace(/[^A-Za-z]/g, "").length}</span>`;
+  b.firstChild.textContent = word;
+  b.addEventListener("click", () => copy(word, b));
+  return b;
+}
+
+function catBlock(c, words, note) {
+  const sec = document.createElement("div");
+  sec.className = "cat"; sec.style.setProperty("--c", `var(--${c.key})`);
+  const h = document.createElement("h2");
+  h.innerHTML = `${c.label} <small>${c.th} · ${words.length} คำ</small>`;
+  sec.appendChild(h);
+  if (note) { const p = document.createElement("p"); p.className = "hit"; p.textContent = note; sec.appendChild(p); }
+  const wrap = document.createElement("div"); wrap.className = "words";
+  if (!words.length) {
+    const p = document.createElement("p"); p.className = "none";
+    p.textContent = "ยังไม่มีคำในหมวดนี้ ลองหมวดอื่นก่อน";
+    wrap.appendChild(p);
+  }
+  for (const w of words) wrap.appendChild(chip(w, c.key));
+  sec.appendChild(wrap);
+  return sec;
+}
+
+function render() {
+  lettersEl.querySelectorAll(".letter").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.l === state.letter && !state.q)));
+  $("sort").textContent = state.sort === "short" ? "เรียง: สั้นก่อน" : "เรียง: A–Z";
+  renderTabs();
+  boardEl.innerHTML = "";
+  const cats = state.cat === "all" ? CATS : CATS.filter(c => c.key === state.cat);
+
+  if (state.q) {
+    const q = state.q.toLowerCase();
+    let total = 0;
+    const head = document.createElement("div"); head.className = "big";
+    boardEl.appendChild(head);
+    for (const c of cats) {
+      const found = [];
+      for (const L of LETTERS) for (const w of DATA[L][c.key]) if (w.toLowerCase().includes(q)) found.push(w);
+      const words = sortWords([...new Set(found)]);
+      total += words.length;
+      if (words.length) boardEl.appendChild(catBlock(c, words));
+    }
+    head.innerHTML = `<p>ผลค้นหา “<span class="selectable"></span>” ทุกตัวอักษร · ${total} คำ</p>`;
+    head.querySelector("span").textContent = state.q;
+    if (!total) {
+      const p = document.createElement("p"); p.className = "none";
+      p.textContent = "ไม่พบคำนี้ในคลัง ลองพิมพ์ให้สั้นลง หรือลบช่องค้นหาเพื่อกลับไปเลือกตัวอักษร";
+      boardEl.appendChild(p);
+    }
+    return;
+  }
+
+  const head = document.createElement("div"); head.className = "big";
+  head.innerHTML = `<b>${state.letter}</b><p>คำที่ขึ้นต้นด้วย ${state.letter}</p>`;
+  boardEl.appendChild(head);
+  for (const c of cats) boardEl.appendChild(catBlock(c, sortWords(DATA[state.letter][c.key])));
+}
+
+function setLetter(L) {
+  state.letter = L; store.set("letter", L);
+  if (state.q) { state.q = ""; $("q").value = ""; }
+  render();
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 1400);
+}
+function copy(word, el) {
+  const done = () => {
+    el.classList.add("copied"); setTimeout(() => el.classList.remove("copied"), 700);
+    toast(`คัดลอก “${word}” แล้ว`);
+  };
+  const fallback = () => {
+    const r = document.createRange(); r.selectNodeContents(el.firstChild);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    toast("คัดลอกอัตโนมัติไม่ได้ กด Ctrl+C เพื่อคัดลอกคำที่เลือกไว้");
+  };
+  try { navigator.clipboard.writeText(word).then(done, fallback); } catch { fallback(); }
+}
+
+$("q").addEventListener("input", e => { state.q = e.target.value.trim(); render(); });
+$("sort").addEventListener("click", () => { state.sort = state.sort === "short" ? "az" : "short"; store.set("sort", state.sort); render(); });
+$("rand").addEventListener("click", () => setLetter(LETTERS[Math.floor(Math.random() * LETTERS.length)]));
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea") { if (e.key === "Escape") { e.target.value = ""; state.q = ""; render(); } return; }
+  const k = e.key.toUpperCase();
+  if (k.length === 1 && LETTERS.includes(k)) { setLetter(k); }
+  else if (e.key === "/") { e.preventDefault(); $("q").focus(); }
+});
+
+render();
+</script>
+</body>
+</html>
